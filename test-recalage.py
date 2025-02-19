@@ -117,6 +117,10 @@ for _, row in tqdm(fibro_line.iterrows(), total=fibro_line.shape[0], desc="Proce
 
 try:
     flagged_gdf.to_file("misaligned_segments/misaligned_segments.shp")
+    difference_points_gdf.to_file("misaligned_segments/difference_points.shp")  # Save difference points!
+
+
+
     print("✅ Misaligned segments saved to 'misaligned_segments.shp'!")
     print('✅ Flagged points saved to misaligned_segments/difference_points.shp ')
 except Exception as e:
