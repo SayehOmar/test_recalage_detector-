@@ -2,11 +2,11 @@ import pyautogui
 import time
 
 movement = {
-    'click_layer': '-2341,760',
-    'exprot': '-2075,1229',
-    'save_feature': '-1966,1235',
-    'file_name': '-935,301',
-    'ok': '-1119,1993'
+    'click_layer': '-2186,856',
+    'exprot': '-1971,739',
+    'save_feature': '-1820,750',
+    'file_name': '-1306,291',
+    'ok': '-1301,980'
 }
 
 def perform_movement(action, click_type='click'):  # Added click_type parameter
@@ -39,7 +39,7 @@ perform_movement('click_layer', 'right_click')  # Right-click for 'click_layer'
 perform_movement('exprot')  # Default click
 perform_movement('save_feature')
 perform_movement('file_name')
-pyautogui.typewrite("my_shapefile.shp")  # Example filename
+pyautogui.typewrite(r"C:\Users\essayeh.omar_amaris\Desktop\test.shp") # Example filename
 pyautogui.press('enter')
 time.sleep(1)
 perform_movement('ok')
