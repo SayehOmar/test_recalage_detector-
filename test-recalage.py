@@ -2,12 +2,12 @@ import geopandas as gpd
 from shapely.geometry import LineString, Point
 import pandas as pd
 from shapely.ops import transform
-from tqdm import tqdm 
+from tqdm import tqdm
 
 # Load shapefiles
 try:
     fibro_line = gpd.read_file("shp/fibro_line.shp")
-    old_fibro_line = gpd.read_file("old.shp")
+    old_fibro_line = gpd.read_file("shp/old.shp")
     new_cadaster = gpd.read_file("shp/new_cadaster.shp")
 except FileNotFoundError:
     print("Error: One or more shapefiles not found.")
@@ -25,8 +25,9 @@ old_fibro_line = old_fibro_line.to_crs(utm_crs)
 # Prepare an empty GeoDataFrame for flagged segments
 flagged_gdf = gpd.GeoDataFrame(columns=["geometry", "status"], crs=fibro_line.crs)
 # Create a GeoDataFrame to store the difference points
-difference_points_gdf = gpd.GeoDataFrame(columns=["geometry", "status"], crs=fibro_line.crs)  # Same CRS as fibro_line
-
+difference_points_gdf = gpd.GeoDataFrame(
+    columns=["geometry", "status"], crs=fibro_line.crs
+)  # Same CRS as fibro_line
 
 
 def check_alignment(segment, cadaster, tolerance=0.5, min_overlap=0.5):
@@ -41,13 +42,19 @@ def check_alignment(segment, cadaster, tolerance=0.5, min_overlap=0.5):
 
         # Handle the case where intersection is a GeoSeries
         if isinstance(intersection, gpd.GeoSeries):
-            if not intersection.is_empty.any(): #Check if there's any intersection at all
-                return "Misaligned" # No intersection
-            intersection_length = intersection.length.sum()  # Sum of lengths if multiple intersections
-        elif not intersection.is_empty: #Check if there's any intersection at all
-            if intersection.geom_type == 'MultiLineString':  # Correctly check geom_type of a single geometry
+            if (
+                not intersection.is_empty.any()
+            ):  # Check if there's any intersection at all
+                return "Misaligned"  # No intersection
+            intersection_length = (
+                intersection.length.sum()
+            )  # Sum of lengths if multiple intersections
+        elif not intersection.is_empty:  # Check if there's any intersection at all
+            if (
+                intersection.geom_type == "MultiLineString"
+            ):  # Correctly check geom_type of a single geometry
                 intersection_length = sum(line.length for line in intersection.geoms)
-            elif intersection.geom_type == 'LineString':
+            elif intersection.geom_type == "LineString":
                 intersection_length = intersection.length
             else:
                 intersection_length = 0
@@ -83,15 +90,21 @@ def check_modifications(segment, old_fibro, tolerance=0.5):
 
 
 # Process each line feature with progress bar
-for _, row in tqdm(fibro_line.iterrows(), total=fibro_line.shape[0], desc="Processing lines"):
+for _, row in tqdm(
+    fibro_line.iterrows(), total=fibro_line.shape[0], desc="Processing lines"
+):
     line = row.geometry
     coords = list(line.coords)
 
     for i in range(len(coords) - 1):
         segment = LineString([Point(coords[i]), Point(coords[i + 1])])
 
-        alignment_status = check_alignment(segment, new_cadaster, tolerance=0.5, min_overlap=0.5)  # Example values
-        modification_status = check_modifications(segment, old_fibro_line, tolerance=1)  # Example values
+        alignment_status = check_alignment(
+            segment, new_cadaster, tolerance=0.5, min_overlap=0.5
+        )  # Example values
+        modification_status = check_modifications(
+            segment, old_fibro_line, tolerance=1
+        )  # Example values
 
         # Check if segment's midpoint is within 0.5m of any cadaster polygon
         midpoint = segment.centroid
@@ -103,25 +116,45 @@ for _, row in tqdm(fibro_line.iterrows(), total=fibro_line.shape[0], desc="Proce
 
         # ***KEY CHANGE: Check buffer BEFORE flagging***
         if not within_cadaster_buffer:  # Only proceed if NOT within buffer
-            if alignment_status == "Misaligned" or modification_status in ["Modified", "New Segment"]:
-                temp_df = gpd.GeoDataFrame({
-                    "geometry": [segment],
-                    "status": [f"{alignment_status}, {modification_status}"]
-                }, crs=fibro_line.crs)
+            if alignment_status == "Misaligned" or modification_status in [
+                "Modified",
+                "New Segment",
+            ]:
+                temp_df = gpd.GeoDataFrame(
+                    {
+                        "geometry": [segment],
+                        "status": [f"{alignment_status}, {modification_status}"],
+                    },
+                    crs=fibro_line.crs,
+                )
 
                 flagged_gdf = pd.concat([flagged_gdf, temp_df], ignore_index=True)
 
                 # Add difference point (at segment midpoint)
-                difference_points_gdf = pd.concat([difference_points_gdf, gpd.GeoDataFrame({"geometry": [midpoint], "status": [f"{alignment_status}, {modification_status}"]}, crs=fibro_line.crs)], ignore_index=True)
+                difference_points_gdf = pd.concat(
+                    [
+                        difference_points_gdf,
+                        gpd.GeoDataFrame(
+                            {
+                                "geometry": [midpoint],
+                                "status": [
+                                    f"{alignment_status}, {modification_status}"
+                                ],
+                            },
+                            crs=fibro_line.crs,
+                        ),
+                    ],
+                    ignore_index=True,
+                )
 
 
 try:
     flagged_gdf.to_file("misaligned_segments/misaligned_segments.shp")
-    difference_points_gdf.to_file("misaligned_segments/difference_points.shp")  # Save difference points!
-
-
+    difference_points_gdf.to_file(
+        "misaligned_segments/difference_points.shp"
+    )  # Save difference points!
 
     print("✅ Misaligned segments saved to 'misaligned_segments.shp'!")
-    print('✅ Flagged points saved to misaligned_segments/difference_points.shp ')
+    print("✅ Flagged points saved to misaligned_segments/difference_points.shp ")
 except Exception as e:
     print(f"Error saving shapefile: {e}")
