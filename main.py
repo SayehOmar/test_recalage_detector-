@@ -11,6 +11,9 @@ if __name__ == "__main__":
     buffered_new_segments_path = "misaligned_segments/new_buffered_segments.shp"
     buffered_old_segments_path = "misaligned_segments/old_buffered_segments.shp"
     old_cadaster_path = "shp/batiment.shp"
+    new_vertex_points_path="misaligned_segments/new_vertex_pointss.shp"
+    old_vertex_points_path="misaligned_segments/old_vertex_points.shp"
+
 
     utm_crs = "EPSG:32632"
     tolerance = 0.5
@@ -23,7 +26,7 @@ if __name__ == "__main__":
     )
 
     if fibro_line is not None:
-        flagged_gdf, difference_points_gdf, buffered_new_segments_gdf, buffered_old_segments_gdf = process_lines( # Correct unpacking
+        flagged_gdf, difference_points_gdf, buffered_new_segments_gdf, buffered_old_segments_gdf,new_vertex_points_gdf, old_vertex_points_gdf = process_lines( # Correct unpacking
             fibro_line,
             old_fibro_line,
             new_cadaster,
@@ -43,4 +46,8 @@ if __name__ == "__main__":
             buffered_old_segments_path,
             buffered_new_segments_gdf,
             buffered_old_segments_gdf,
+            new_vertex_points_path,
+            old_vertex_points_path,
+            new_vertex_points_gdf,
+            old_vertex_points_gdf
         )

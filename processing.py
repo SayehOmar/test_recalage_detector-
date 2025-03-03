@@ -14,13 +14,18 @@ def process_lines(
     min_overlap,
     modification_tolerance,
     distance_tolerance,
-    segment_buffer_distance=0.5,
+    segment_buffer_distance=0.25,
+    point_distance_tolerance=0.5 
+    #point_distance_tolerance=0.5
 ):
     """Processes lines, flags misalignments, and creates segment buffers."""
     flagged_gdf = gpd.GeoDataFrame(columns=["geometry", "status"], crs=fibro_line.crs)
     difference_points_gdf = gpd.GeoDataFrame(columns=["geometry", "status"], crs=fibro_line.crs)
     buffered_new_segments_gdf = gpd.GeoDataFrame(columns=["geometry"], crs=fibro_line.crs)
     buffered_old_segments_gdf = gpd.GeoDataFrame(columns=["geometry"], crs=fibro_line.crs)
+    new_vertex_points_gdf = gpd.GeoDataFrame(columns=["geometry", "status"], crs=fibro_line.crs) # New Vertex Points
+    old_vertex_points_gdf = gpd.GeoDataFrame(columns=["geometry", "status"], crs=fibro_line.crs) # Old Vertex Points
+
 
     for _, row in tqdm(
         fibro_line.iterrows(), total=fibro_line.shape[0], desc="Processing lines"
@@ -32,6 +37,7 @@ def process_lines(
 
         if len(coords) - 1 != len(old_coords) - 1:
             continue
+        line_flagged = False
 
         for i in range(len(coords) - 1):
             segment = LineString([Point(coords[i]), Point(coords[i + 1])])
@@ -80,4 +86,46 @@ def process_lines(
                         ignore_index=True,
                     )
 
-    return flagged_gdf, difference_points_gdf, buffered_new_segments_gdf, buffered_old_segments_gdf
+            # Check distance between corresponding points and add to vertex_points_gdf
+            if i < len(coords) - 1:
+                new_point1 = Point(coords[i])
+                new_point2 = Point(coords[i + 1])
+                old_point1 = Point(old_coords[i])
+                old_point2 = Point(old_coords[i + 1])
+
+                if new_point1.distance(old_point1) > point_distance_tolerance:
+                    new_vertex_points_gdf = pd.concat([new_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [new_point1], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                    old_vertex_points_gdf = pd.concat([old_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [old_point1], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                    line_flagged = True # Flag the whole line
+                if new_point2.distance(old_point2) > point_distance_tolerance:
+                    new_vertex_points_gdf = pd.concat([new_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [new_point2], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                    old_vertex_points_gdf = pd.concat([old_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [old_point2], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                    line_flagged = True # Flag the whole line
+
+            if line_flagged: # Flag the whole line if any point mismatch
+                line_gdf = gpd.GeoDataFrame({"geometry": [line], "status": "Line Point Mismatch"}, crs=fibro_line.crs)
+                flagged_gdf = pd.concat([flagged_gdf, line_gdf], ignore_index=True)
+                line_midpoint = line.centroid
+                difference_points_gdf = pd.concat([difference_points_gdf, gpd.GeoDataFrame({"geometry":[line_midpoint], "status":"Line Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+            else :
+                pass
+
+
+                # Check distance between corresponding points and add to vertex_points_gdf
+                
+                if i < len(coords) - 1:
+                    
+                    new_point1 = Point(coords[i])
+                    new_point2 = Point(coords[i + 1])
+                    old_point1 = Point(old_coords[i])
+                    old_point2 = Point(old_coords[i + 1])
+
+                    if new_point1.distance(old_point1) > point_distance_tolerance:
+                        new_vertex_points_gdf = pd.concat([new_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [new_point1], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                        old_vertex_points_gdf = pd.concat([old_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [old_point1], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                    if new_point2.distance(old_point2) > point_distance_tolerance:
+                        new_vertex_points_gdf = pd.concat([new_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [new_point2], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+                        old_vertex_points_gdf = pd.concat([old_vertex_points_gdf, gpd.GeoDataFrame({"geometry": [old_point2], "status": "Point Mismatch"}, crs=fibro_line.crs)], ignore_index=True)
+
+        return flagged_gdf, difference_points_gdf, buffered_new_segments_gdf, buffered_old_segments_gdf, new_vertex_points_gdf, old_vertex_points_gdf # Return both vertex GDFs
+
