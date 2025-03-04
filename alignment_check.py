@@ -47,7 +47,56 @@ def find_nearest_geometry(segment, cadaster):
 
     return nearest_geom
 
+def create_intersection_and_endpoint_points(fibro_line, cadaster, buffer_distance=0.25):
+    """
+    Creates intersection and endpoint points with buffers for a fibro line.
 
+    Args:
+        fibro_line (gpd.GeoSeries or gpd.GeoDataFrame): The fibro line geometry.
+        cadaster (gpd.GeoDataFrame): The cadaster GeoDataFrame.
+        buffer_distance (float): The buffer distance around the points.
+
+    Returns:
+        gpd.GeoDataFrame: A GeoDataFrame containing the intersection and endpoint points with buffers.
+    """
+    intersection_points = []
+    endpoint_points = []
+
+    if isinstance(fibro_line, gpd.GeoSeries):
+        lines = gpd.GeoDataFrame(geometry=fibro_line)
+    elif isinstance(fibro_line, gpd.GeoDataFrame):
+        lines = fibro_line
+    else:
+        return gpd.GeoDataFrame()
+
+    for line in lines.geometry:
+        # Intersection points
+        for polygon in cadaster.geometry:
+            if line.intersects(polygon):
+                intersection = line.intersection(polygon)
+                if intersection.geom_type == 'Point':
+                    intersection_points.append(intersection.buffer(buffer_distance))
+                elif intersection.geom_type == 'MultiPoint':
+                    for point in intersection.geoms:
+                        intersection_points.append(point.buffer(buffer_distance))
+                elif intersection.geom_type == 'LineString':
+                    for point in [Point(coord) for coord in intersection.coords]:
+                        intersection_points.append(point.buffer(buffer_distance))
+                elif intersection.geom_type == 'MultiLineString':
+                    for linestring in intersection.geoms:
+                        for point in [Point(coord) for coord in linestring.coords]:
+                            intersection_points.append(point.buffer(buffer_distance))
+                elif intersection.geom_type == 'GeometryCollection':
+                    for geom in intersection.geoms:
+                        if geom.geom_type == 'Point':
+                            intersection_points.append(geom.buffer(buffer_distance))
+                        elif geom.geom_type == 'LineString':
+                            for point in [Point(coord) for coord in geom.coords]:
+                                intersection_points.append(point.buffer(buffer_distance))
+
+ # Endpoint points
+        endpoint_points.append(Point(line.coords[0]).buffer(buffer_distance)) # Start point
+        endpoint_points.append(Point(line.coords[-1]).buffer(buffer_distance)) # End point
 
 def create_buffered_lines(fibro_line_path, old_fibro_line_path, buffer_distance=1.0, target_crs="EPSG:32632"): #added target_crs
     """Creates buffered GeoDataFrames from fibro line shapefiles."""

@@ -13,7 +13,11 @@ def save_results(
     new_vertex_points_path, # New vertex path
     old_vertex_points_path, # Old vertex path
     new_vertex_points_gdf, # New Vertex GDF
-    old_vertex_points_gdf # Old Vertex GDF
+    old_vertex_points_gdf, # Old Vertex GDF
+     new_intersection_points_path, # New intersection points path
+    old_intersection_points_path, # Old intersection points path
+    new_intersection_points_gdf, # New intersection points GDF
+    old_intersection_points_gdf # Old intersection points GDF
 ):
     """Saves flagged segments, difference points, and segment buffers."""
     try:
@@ -44,6 +48,15 @@ def save_results(
         if old_vertex_points_gdf is not None and not old_vertex_points_gdf.empty:
             old_vertex_points_gdf.to_file(old_vertex_points_path)
             print(f"✅ Old vertex points saved to '{old_vertex_points_path}'!")
+        if new_intersection_points_gdf is not None and not new_intersection_points_gdf.empty:
+            new_intersection_points_gdf.to_file(new_intersection_points_path)
+            print(f"✅ New intersection points saved to '{new_intersection_points_path}'!")
+
+        # Save old intersection points
+        if old_intersection_points_gdf is not None and not old_intersection_points_gdf.empty:
+            old_intersection_points_gdf.to_file(old_intersection_points_path)
+            print(f"✅ Old intersection points saved to '{old_intersection_points_path}'!")
+
 
     except Exception as e:
         print(f"Error saving shapefiles: {e}")
